@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Budget Management System</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .display-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Global App Header -->
+    <header class="bg-white border-b border-slate-200 py-4 px-6 md:px-12 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+            <div
+                class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md sm:shadow-indigo-100">
+                ₹
+            </div>
+            <div>
+                <h1 class="display-font font-bold text-lg md:text-xl text-slate-900 tracking-tight">LedgerFlow</h1>
+                <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Cloud Native Budgeting</p>
+            </div>
+        </div>
+        <div id="user-pill"
+            class="hidden flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-full py-1.5 px-4">
+            <span class="inline-block h-2.5 w-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+            <span id="header-user-info" class="text-xs font-medium text-slate-600">Loading user...</span>
+            <button onclick="handleReset()"
+                class="text-xs text-red-500 hover:text-red-700 font-medium pl-2 border-l border-slate-200">Reset</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="grow flex flex-col justify-center items-center p-4 md:p-8">
+
+        <!-- SECTION 1: Onboarding Screen -->
+        <section id="onboarding-view"
+            class="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-100 p-8 space-y-6 transition-all duration-300">
+            <div class="text-center space-y-2">
+                <span
+                    class="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full uppercase tracking-wider">Onboarding</span>
+                <h2 class="display-font text-2xl font-bold text-slate-900">Define Your Capital Profile</h2>
+                <p class="text-xs text-slate-500">Configure your professional profile and net monthly budget parameters
+                    to unlock real-time financial tracking metrics.</p>
+            </div>
+
+            <form id="onboarding-form" onsubmit="handleOnboard(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Full
+                        Name</label>
+                    <input type="text" id="onboard-name" required placeholder="e.g., Jane Doe"
+                        class="w-full border border-slate-300 rounded-xl py-2 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Profession</label>
+                    <input type="text" id="onboard-profession" required placeholder="e.g., Software Architect"
+                        class="w-full border border-slate-300 rounded-xl py-2 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Net Monthly
+                        Budget (INR)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-semibold text-slate-400">₹</span>
+                        <input type="number" id="onboard-budget" step="0.01" required placeholder="5000.00"
+                            class="w-full border border-slate-300 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm py-2.5 rounded-xl shadow-lg transition-all duration-200">
+                    Onboard Dashboard
+                </button>
+            </form>
+        </section>
+
+        <!-- SECTION 2: Master Dashboard View (Hidden until Onboarded) -->
+        <section id="dashboard-view"
+            class="hidden w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start self-start">
+
+            <!-- LEFT RAIL: Controls, Forms, Warnings (4 columns) -->
+            <div class="lg:col-span-4 space-y-6">
+
+                <!-- Personalized Welcome Card -->
+                <div
+                    class="bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 relative overflow-hidden">
+                    <div class="relative z-10 space-y-1">
+                        <p class="text-xs font-semibold text-indigo-400 tracking-wider uppercase">Active Session</p>
+                        <h3
+                            class="display-font text-xl font-bold tracking-tight text-white flex items-center space-x-1">
+                            <span>Welcome, </span>
+                            <span id="user-welcome-name" class="text-indigo-200">Jane</span>
+                        </h3>
+                        <p class="text-xs text-slate-300 transition-colors" id="user-welcome-profession">Financial
+                            Specialist</p>
+                    </div>
+                    <!-- Absolute styled background accent circles -->
+                    <div class="absolute -right-12 -top-12 h-32 w-32 bg-indigo-500/20 rounded-full blur-xl"></div>
+                    <div class="absolute -right-6 -bottom-12 h-32 w-32 bg-emerald-500/10 rounded-full blur-xl"></div>
+                </div>
+
+                <!-- Expense Input Form -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md shadow-slate-100 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="display-font font-bold text-slate-900 tracking-tight text-md">Record Transaction</h4>
+                        <span
+                            class="inline-block text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full uppercase">Instant
+                            Tag</span>
+                    </div>
+
+                    <form id="expense-form" onsubmit="handleAddExpense(event)" class="space-y-3.5">
+                        <div>
+                            <label
+                                class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Description</label>
+                            <input type="text" id="expense-desc" required
+                                placeholder="e.g., Starbucks Coffee, Rent Payment"
+                                class="w-full border border-slate-300 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-1.5 focus:ring-indigo-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Amount
+                                    (₹)</label>
+                                <input type="number" id="expense-amount" step="0.01" required placeholder="12.50"
+                                    class="w-full border border-slate-300 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-1.5 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                                <select id="expense-category"
+                                    class="w-full border border-slate-300 rounded-xl py-2 px-2.5 text-xs bg-white focus:outline-none focus:ring-1.5 focus:ring-indigo-500">
+                                    <option value="Auto">✨ Auto-Tag</option>
+                                    <option value="Food">Food</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Rent">Rent</option>
+                                    <option value="Miscellaneous">Miscellaneous</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Transaction
+                                Date</label>
+                            <input type="date" id="expense-date" required
+                                class="w-full border border-slate-300 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-1.5 focus:ring-indigo-500">
+                        </div>
+                        <button type="submit"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2 rounded-xl shadow-lg shadow-indigo-100 transition-all duration-200">
+                            Add Transaction
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Category Auto-Tag Guide Card -->
+                <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-2xl p-4 space-y-2">
+                    <p class="text-xs font-bold text-indigo-900 tracking-tight flex items-center space-x-1.5">
+                        <span>💡</span> <span>Machine Learning Auto-Tag</span>
+                    </p>
+                    <p class="text-[11px] leading-relaxed text-slate-600">
+                        Leave the Category selector on <strong class="text-indigo-800">Auto-Tag</strong>. Our local
+                        regex lookup classifies items automatically (e.g., "McDonalds" as Food, "electricity" as
+                        Utilities, "Spotify" as Entertainment).
+                    </p>
+                </div>
+            </div>
+
+            <!-- RIGHT WORKSPACE: Metrics, Visualization, and Ledger (8 columns) -->
+            <div class="lg:col-span-8 space-y-6">
+
+                <!-- High-Volume Banner Warnings (Spent > 85%) -->
+                <div id="warning-banner"
+                    class="hidden border border-amber-200 bg-amber-50 rounded-2xl p-4 flex items-start space-x-3.5 transition-all duration-300">
+                    <span class="text-lg">⚠️</span>
+                    <div class="space-y-0.5">
+                        <h4 class="text-sm font-semibold text-amber-800">Attention: High Volume Capital Outflow
+                            Detected!</h4>
+                        <p class="text-xs text-amber-700 leading-relaxed">
+                            Your cumulative spending ledger has exceeded <strong class="font-bold">85% of your declared
+                                net monthly budget cap</strong>. Consider auditing non-critical outlays immediately to
+                            maintain positive balance equity.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Summary Cards Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Net Budget Card -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Range
+                                Cap</span>
+                            <span class="text-slate-400">🛡️</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <p class="text-[11px] text-slate-500">Monthly Allocation</p>
+                            <h5 id="metric-budget" class="display-font text-xl md:text-2xl font-bold text-slate-900">
+                                $0.00</h5>
+                        </div>
+                    </div>
+
+                    <!-- Gross Spend Card -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current
+                                Spending</span>
+                            <span class="text-indigo-500" id="metric-spend-emoji">📈</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <p id="metric-spend-pct" class="text-[11px] text-slate-500">0% of Cap Limit</p>
+                            <h5 id="metric-spent" class="display-font text-xl md:text-2xl font-bold text-slate-900">
+                                $0.00</h5>
+                        </div>
+                    </div>
+
+                    <!-- Net Balance Card -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net
+                                Balance</span>
+                            <span class="text-emerald-500" id="metric-balance-indicator">●</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <p class="text-[11px] text-slate-500" id="metric-balance-subtitle">Available Capital</p>
+                            <h5 id="metric-balance"
+                                class="display-font text-xl md:text-2xl font-bold text-emerald-600 font-bold">$0.00</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Midsection Row: Category Visualization and Budget Distribution -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <!-- Chart card (7 columns) -->
+                    <div
+                        class="md:col-span-12 lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="display-font font-bold text-slate-900 tracking-tight text-md">Allocation
+                                    Outlay Analysis</h4>
+                                <p class="text-[11px] text-slate-400">Relative allocation spent by core categorizations
+                                </p>
+                            </div>
+                        </div>
+                        <div class="relative h-64 md:h-72 w-full flex items-center justify-center">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Progress Ring Dashboard / Summary details (5 columns) -->
+                    <div
+                        class="md:col-span-12 lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                            <h4 class="display-font font-bold text-slate-900 tracking-tight text-md">Budget Velocity
+                            </h4>
+                            <p class="text-[11px] text-slate-400">Consumption rates and thresholds</p>
+                        </div>
+
+                        <!-- Mini progress bar layouts -->
+                        <div id="category-progress-bars" class="space-y-3.5 grow flex flex-col justify-center">
+                            <!-- Injected dynamically via JavaScript -->
+                            <p class="text-xs text-slate-400 text-center py-6">No spending data logged. Record
+                                transactions on the left to review metrics.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ledger History List -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="display-font font-bold text-slate-900 tracking-tight text-md">Transaction Ledger
+                            </h4>
+                            <p class="text-[11px] text-slate-400">Detailed historical list of recorded items</p>
+                        </div>
+                        <span id="ledger-item-count"
+                            class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">0
+                            entries</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr
+                                    class="border-b border-slate-100 uppercase text-[9px] font-bold text-slate-500 tracking-wider">
+                                    <th class="py-3 px-2">Date</th>
+                                    <th class="py-3 px-2">Description</th>
+                                    <th class="py-3 px-2">Category</th>
+                                    <th class="py-3 px-2 text-right">Amount</th>
+                                    <th class="py-3 px-2 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ledger-rows" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- Injected dynamically via Javascript -->
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-400">No transactions recorded.
+                                        Log your first expense.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Global App Footer -->
+    <footer
+        class="bg-slate-900 text-slate-400 text-[11px] border-t border-slate-800 py-6 px-4 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 mt-auto">
+        <div>
+            <p>© 2026 LedgerFlow Personal Budget Manager. Preconfigured for seamless Google Cloud Run deployment.</p>
+        </div>
+        <div class="flex space-x-4">
+            <span class="hover:text-white transition-colors cursor-help"
+                title="Using stateless local storage simulation">Database: Stateless JSON API</span>
+            <span class="text-slate-600">|</span>
+            <span class="hover:text-white transition-colors cursor-help"
+                title="Configured to port 8080 routing internally">Cloud Port: 8080 default</span>
+        </div>
+    </footer>
+
+    <!-- Frontend Interactive Application JS -->
+    <script>
+        // Set default date picker value to today's date
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().substring(0, 10);
+            const dateInput = document.getElementById('expense-date');
+            if (dateInput) {
+                dateInput.value = today;
+            }
+            fetchBudgetState();
+        });
+
+        // Global state references
+        let appState = {
+            user: null,
+            expenses: []
+        };
+        let chartInstance = null;
+
+        // Fetch master state from FastAPI backend API endpoints
+        async function fetchBudgetState() {
+            try {
+                const response = await fetch('/api/budget');
+                if (!response.ok) throw new Error('API server unavailable');
+
+                appState = await response.json();
+                renderUI();
+            } catch (error) {
+                console.warn('Could not contact API server backend, falling back to local storage simulation.', error);
+
+                // Fallback to offline local storage simulation so the UI is fully operational independently
+                const localData = localStorage.getItem('localStorageBudgetState');
+                if (localData) {
+                    try {
+                        appState = JSON.parse(localData);
+                    } catch (e) {
+                        appState = { user: null, expenses: [] };
+                    }
+                } else {
+                    appState = { user: null, expenses: [] };
+                }
+                renderUI();
+            }
+        }
+
+        // Sync local storage if API backend fails or as a cache mechanism
+        function saveLocalFallback() {
+            localStorage.setItem('localStorageBudgetState', JSON.stringify(appState));
+        }
+
+        // Render the entire dashboard UI from the local state
+        function renderUI() {
+            const userPill = document.getElementById('user-pill');
+            const headerUserInfo = document.getElementById('header-user-info');
+            const onboardingView = document.getElementById('onboarding-view');
+            const dashboardView = document.getElementById('dashboard-view');
+
+            if (!appState.user) {
+                // Show Onboarding Screen
+                onboardingView.classList.remove('hidden');
+                dashboardView.classList.add('hidden');
+                if (userPill) userPill.classList.add('hidden');
+                return;
+            }
+
+            // Hide Onboarding, show Dashboard Panel
+            onboardingView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            if (userPill) userPill.classList.remove('hidden');
+
+            const budgetAmount = parseFloat(appState.user.budget) || 0;
+            const profession = appState.user.profession || 'Specialist';
+            const name = appState.user.name || 'User';
+
+            // Populate User Header info
+            if (headerUserInfo) headerUserInfo.textContent = `${name} (${profession})`;
+            document.getElementById('user-welcome-name').textContent = name;
+            document.getElementById('user-welcome-profession').textContent = profession;
+
+            // Summary Metrics calculations
+            const totalSpent = appState.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+            const remainingBalance = budgetAmount - totalSpent;
+            const spentPercentage = budgetAmount > 0 ? (totalSpent / budgetAmount) * 100 : 0;
+
+            // Render Metrics block values
+            document.getElementById('metric-budget').textContent = formatCurrency(budgetAmount);
+            document.getElementById('metric-spent').textContent = formatCurrency(totalSpent);
+
+            const spentPercentText = document.getElementById('metric-spend-pct');
+            spentPercentText.textContent = `${spentPercentage.toFixed(1)}% of Net budget allocated`;
+
+            const balanceText = document.getElementById('metric-balance');
+            balanceText.textContent = formatCurrency(remainingBalance);
+
+            // Conditional CSS for metrics cards
+            const balanceSubtitle = document.getElementById('metric-balance-subtitle');
+            const balanceIndicator = document.getElementById('metric-balance-indicator');
+            const spendEmoji = document.getElementById('metric-spend-emoji');
+
+            if (remainingBalance < 0) {
+                balanceText.className = 'display-font text-xl md:text-2xl font-bold text-red-600';
+                balanceSubtitle.textContent = 'Account Deficit Warning';
+                balanceIndicator.className = 'text-red-500';
+                spendEmoji.textContent = '🚨';
+            } else if (remainingBalance < (budgetAmount * 0.15)) {
+                balanceText.className = 'display-font text-xl md:text-2xl font-bold text-amber-600';
+                balanceSubtitle.textContent = 'Low Margin Overflow';
+                balanceIndicator.className = 'text-amber-500';
+                spendEmoji.textContent = '⚠️';
+            } else {
+                balanceText.className = 'display-font text-xl md:text-2xl font-bold text-emerald-600';
+                balanceSubtitle.textContent = 'Available Capital surplus';
+                balanceIndicator.className = 'text-emerald-500';
+                spendEmoji.textContent = '📈';
+            }
+
+            // High Volume spent Warning (>85%) toggler
+            const warningBanner = document.getElementById('warning-banner');
+            if (spentPercentage >= 85) {
+                warningBanner.classList.remove('hidden');
+            } else {
+                warningBanner.classList.add('hidden');
+            }
+
+            // Build Transaction lists
+            renderLedgerTable();
+
+            // Render Chart visualizations
+            renderCharts(budgetAmount);
+        }
+
+        // Format raw ledger lists inside table rows
+        function renderLedgerTable() {
+            const rowsContainer = document.getElementById('ledger-rows');
+            const counter = document.getElementById('ledger-item-count');
+
+            if (!rowsContainer) return;
+
+            counter.textContent = `${appState.expenses.length} entr${appState.expenses.length === 1 ? 'y' : 'ies'}`;
+
+            if (appState.expenses.length === 0) {
+                rowsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-10 text-center text-slate-400 bg-slate-50/50 rounded-b-xl">
+                            <div class="flex flex-col items-center justify-center space-y-2">
+                                <span class="text-2xl">📋</span>
+                                <p class="font-medium text-xs text-slate-500">Log transactions to start auditing</p>
+                                <p class="text-[10px] text-slate-400">Complete the transaction capture form on your left side panel.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Sort newest to oldest transactions
+            const sortedExpenses = [...appState.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            rowsContainer.innerHTML = sortedExpenses.map(item => {
+                const badgeColor = getCategoryColor(item.category);
+                return `
+                    <tr class="hover:bg-slate-50 transition-all text-slate-700">
+                        <td class="py-3 px-2 font-mono text-[11px] text-slate-500 whitespace-nowrap">${item.date}</td>
+                        <td class="py-3 px-2 font-medium text-slate-900">${escapeHtml(item.description)}</td>
+                        <td class="py-3 px-2">
+                            <span class="inline-block text-[10px] uppercase font-bold py-0.5 px-2 rounded-full ${badgeColor}">
+                                ${escapeHtml(item.category)}
+                            </span>
+                        </td>
+                        <td class="py-3 px-2 text-right font-medium text-slate-900 font-mono">${formatCurrency(item.amount)}</td>
+                        <td class="py-3 px-2 text-center">
+                            <button onclick="handleDeleteExpense(${item.id})" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 py-1 px-2.5 rounded-lg transition-colors font-medium">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Generate categorical styling lists
+        function getCategoryColor(category) {
+            switch (category) {
+                case 'Food': return 'bg-emerald-50 text-emerald-700 border border-emerald-200/50';
+                case 'Utilities': return 'bg-indigo-50 text-indigo-700 border border-indigo-200/50';
+                case 'Entertainment': return 'bg-amber-50 text-amber-700 border border-amber-200/50';
+                case 'Rent': return 'bg-rose-50 text-rose-700 border border-rose-200/50';
+                default: return 'bg-slate-100 text-slate-700 border border-slate-200/50';
+            }
+        }
+
+        // Render Chart.js breakdown + inline category meters
+        function renderCharts(totalCap) {
+            const categorisations = ['Food', 'Utilities', 'Entertainment', 'Rent', 'Miscellaneous'];
+            const totals = {};
+            categorisations.forEach(c => totals[c] = 0);
+
+            appState.expenses.forEach(exp => {
+                const category = categorisations.includes(exp.category) ? exp.category : 'Miscellaneous';
+                totals[category] += exp.amount;
+            });
+
+            // Update Progress Bars UI (Velocity Section on the right)
+            const progressContainer = document.getElementById('category-progress-bars');
+            if (appState.expenses.length === 0) {
+                progressContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">No spending data logged. Record transactions on the left to review metrics.</p>';
+            } else {
+                progressContainer.innerHTML = categorisations.map(cat => {
+                    const spentOnCat = totals[cat];
+                    const catPctOfTotalBudget = totalCap > 0 ? (spentOnCat / totalCap) * 100 : 0;
+
+                    let barColor = 'bg-indigo-600';
+                    if (cat === 'Food') barColor = 'bg-emerald-500';
+                    if (cat === 'Entertainment') barColor = 'bg-amber-500';
+                    if (cat === 'Rent') barColor = 'bg-rose-500';
+                    if (cat === 'Miscellaneous') barColor = 'bg-slate-400';
+
+                    return `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px] font-medium text-slate-600">
+                                <span class="flex items-center space-x-1.5">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full ${barColor}"></span>
+                                    <strong class="text-slate-800">${cat}</strong>
+                                </span>
+                                <span>${formatCurrency(spentOnCat)} (${catPctOfTotalBudget.toFixed(1)}%)</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${Math.min(catPctOfTotalBudget, 100)}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Build visual Ring representation
+            const canvasElement = document.getElementById('categoryChart');
+            if (!canvasElement) return;
+
+            const chartData = categorisations.map(cat => totals[cat]);
+            const hasDataValue = chartData.some(val => val > 0);
+
+            // Destruct and clear old instances to prevent overlapping drawing threads
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = canvasElement.getContext('2d');
+
+            if (!hasDataValue) {
+                // If there's no spending data, draw a clean gray circular chart
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Empty Capital Ledger'],
+                        datasets: [{
+                            data: [1],
+                            backgroundColor: ['#e2e8f0'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Render real data breakdown
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: categorisations,
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: [
+                                '#10b981', // Food (Emerald-500)
+                                '#4f46e5', // Utilities (Indigo-600)
+                                '#f59e0b', // Entertainment (Amber-500)
+                                '#f43f5e', // Rent (Rose-500)
+                                '#94a3b8'  // Miscellaneous (Slate-400)
+                            ],
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    usePointStyle: true,
+                                    font: { family: 'Inter', size: 11, weight: '500' },
+                                    padding: 15
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (item) {
+                                        const sum = item.dataset.data.reduce((a, b) => a + b, 0);
+                                        const value = item.raw;
+                                        const pct = ((value / sum) * 100).toFixed(1);
+                                        return ` ${item.label}: ${formatCurrency(value)} (${pct}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }
+
+        // Submit Onboarding Profile details
+        async function handleOnboard(event) {
+            event.preventDefault();
+            const name = document.getElementById('onboard-name').value;
+            const profession = document.getElementById('onboard-profession').value;
+            const budget = parseFloat(document.getElementById('onboard-budget').value);
+
+            const payload = { name, profession, budget };
+
+            try {
+                const response = await fetch('/api/onboard', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    appState.user = data.user;
+                } else {
+                    throw new Error('Onboarding failed on the server');
+                }
+            } catch (e) {
+                // Local Fallback simulation mode
+                appState.user = { name, profession, budget };
+                saveLocalFallback();
+            }
+
+            renderUI();
+        }
+
+        // Log transaction action
+        async function handleAddExpense(event) {
+            event.preventDefault();
+            const description = document.getElementById('expense-desc').value;
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const category = document.getElementById('expense-category').value;
+            const date = document.getElementById('expense-date').value;
+
+            const payload = { description, amount, category, date };
+
+            try {
+                const response = await fetch('/api/expenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    appState.expenses.push(data.expense);
+                } else {
+                    throw new Error('Database insertion rejected');
+                }
+            } catch (e) {
+                // Local fallback simulation mode
+                const finalCategory = (category === 'Auto') ? autoTagLocally(description) : category;
+                const mockId = Date.now();
+                const mockExpense = { id: mockId, description, amount, category: finalCategory, date };
+                appState.expenses.push(mockExpense);
+                saveLocalFallback();
+            }
+
+            // Zero form variables
+            document.getElementById('expense-desc').value = '';
+            document.getElementById('expense-amount').value = '';
+            document.getElementById('expense-category').value = 'Auto';
+
+            renderUI();
+        }
+
+        // Delete recorded expense row
+        async function handleDeleteExpense(id) {
+            if (!confirm('Are you absolute sure you want to remove this transaction entry from historical tracks?')) return;
+
+            try {
+                const response = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    appState.expenses = appState.expenses.filter(x => x.id !== id);
+                } else {
+                    throw new Error('Database removal rejected');
+                }
+            } catch (e) {
+                // Local fallback simulation mode
+                appState.expenses = appState.expenses.filter(x => x.id !== id);
+                saveLocalFallback();
+            }
+
+            renderUI();
+        }
+
+        // Complete Reset operation
+        async function handleReset() {
+            if (!confirm('DANGER: This action fully wipes your onboarded user capital profile and clears every logged transaction permanently. Continue?')) return;
+
+            try {
+                const response = await fetch('/api/reset', { method: 'POST' });
+                if (response.ok) {
+                    appState.user = null;
+                    appState.expenses = [];
+                }
+            } catch (e) {
+                // Local storage cleanup fallback
+                appState.user = null;
+                appState.expenses = [];
+                localStorage.removeItem('localStorageBudgetState');
+            }
+
+            renderUI();
+        }
+
+        // Client-side auto tag simulation rules
+        function autoTagLocally(desc) {
+            const lookup = desc.toLowerCase();
+            const rules = {
+                'Food': ["food", "bites", "lunch", "dinner", "breakfast", "groceries", "grocery", "restaurant", "cafe", "coffee", "starbucks", "maccas", "mcdonalds", "burger", "pizza", "eat", "eats", "supermarket"],
+                'Utilities': ["electric", "electricity", "water", "gas", "internet", "wifi", "broadband", "phone", "mobile", "bill", "sewer", "power", "energy", "comcast", "verizon", "t-mobile", "at&t"],
+                'Entertainment': ["movie", "movies", "cinema", "netflix", "spotify", "hulu", "disney", "prime", "game", "gaming", "steam", "nintendo", "xbox", "playstation", "concert", "gig", "pub", "bar", "club", "party", "ticket"],
+                'Rent': ["rent", "lease", "mortgage", "apartment", "house", "flat", "room", "landlord", "hoa"]
+            };
+
+            for (const [cat, words] of Object.entries(rules)) {
+                for (const word of words) {
+                    if (lookup.includes(word)) return cat;
+                }
+            }
+            return 'Miscellaneous';
+        }
+
+        // General helpers
+        function formatCurrency(v) {
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(v);
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+
+</html>
